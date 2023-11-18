@@ -18,13 +18,13 @@ I am currently using a 1" dia x 1" CsI(Tl) encapsulated scintillator from OST Ph
 
 ## Description
 
-Via a few additional passive components, the Trigger/TTL output of the Mini SiD is hooked up to the analog input of a ESP 8266 programmed as a voltage controlled oscillator. 
+Via a few additional passive components, the Trigger/TTL output of the Mini SiD is connected to the analog input of a ESP 8266 programmed as a voltage controlled oscillator. 
 
-A passive buzzer connected to a GPIO pin of the ESP8266 outputs a tone signal with a frequency that is proportional to the counts being detected by the SiPM.
+A passive buzzer connected to a GPIO pin of the ESP8266 outputs a tone signal with a frequency that increases with the counts being detected by the SiPM.
 
 ![RockFinderInterface](https://github.com/dc1rdb/RockFinder/blob/main/docs/RockFinderInterface.png)
 
-The ESP8266 is a Lolin D1 Mini Pro with included battery connector and charging circuit. A small LiPo battery sits between the Mini SiD and the veroboard and the Mini SiD is easily being powered via the 3V3 pin of the ESP. The LiPo battery is being charged via the USB interface of the ESP8266. I've added a magnetic USB plug for better handling. If an internal battery is not required, any ESP8266 clone can be used.
+The ESP8266 is a Lolin D1 Mini Pro with included battery connector and charging circuit. A small single cell 350 mAh LiPo battery sits between the Mini SiD and the veroboard and the Mini SiD is easily being powered via the 3V3 pin of the ESP. The LiPo battery is being charged via the USB interface of the ESP8266. I've added a magnetic USB plug for better handling. If an internal battery is not required, any ESP8266 clone can be used.
 
 ![IMG_20231112_143026](https://github.com/dc1rdb/RockFinder/blob/main/docs/IMG_20231112_143026.jpg)
 
