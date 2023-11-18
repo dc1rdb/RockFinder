@@ -14,7 +14,7 @@ On the other hand, the human brain / ear can easily and subconciously detect ver
 * Low-voltage device: No HV needed like with a photomultiplier tube.
 * Low power consumption: <50 mA.
 
-I am currently using a 1" dia x 1" CsI(Tl) scintillator from OST Photonics, coupled to a MICROFC-60035-SMT-TR SiPM.
+I am currently using a 1" dia x 1" CsI(Tl) encapsulated scintillator from OST Photonics, coupled to a MICROFC-60035-SMT-TR SiPM.
 
 ## Description
 
