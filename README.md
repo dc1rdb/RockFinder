@@ -14,6 +14,8 @@ On the other hand, the human brain / ear can easily and subconciously detect ver
 * Low-voltage device: No HV needed like with a photomultiplier tube.
 * Low power consumption: <50 mA.
 
+I am currently using a 1" dia x 1" CsI(Tl) scintillator from OST Photonics, coupled to a MICROFC-60035-SMT-TR SiPM.
+
 ## Description
 
 Via a few additional passive components, the Trigger/TTL output of the Mini SiD is hooked up to the analog input of a ESP 8266 programmed as a voltage controlled oscillator. 
