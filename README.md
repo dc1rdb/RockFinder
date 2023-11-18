@@ -24,3 +24,7 @@ The enclosure is a standard DN40 (or DN50) tube with end caps, available at home
 Ludlum 2401 Handle by S0N1C https://www.thingiverse.com/thing:2561532
 
 ![IMG_20231112_142928](https://github.com/dc1rdb/RockFinder/assets/9314230/362bfb38-0d7f-455c-a06b-735b87b1088a)
+
+Arduino code in https://github.com/dc1rdb/RockFinder/tree/main/software/RockFinder_analog
+
+Note: there is a digital variant in https://github.com/dc1rdb/RockFinder/tree/main/software/Rockfinder_digital which does not require the above mentioned passive components but it is not working well yet.
