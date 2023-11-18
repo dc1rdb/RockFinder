@@ -32,7 +32,7 @@ void setup() {
   pinMode(interruptPin, INPUT);
   pinMode(buzzerPin, OUTPUT);
   attachInterrupt(digitalPinToInterrupt(interruptPin), handleInterrupt, RISING);
-  WiFi.mode( WIFI_OFF );       //turn off WIFI to reduce power consumption
+  WiFi.mode( WIFI_OFF );       //turn off WIFI to reduce ESP8266 power consumption
   delay(1000);
  
 }
