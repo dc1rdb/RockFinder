@@ -17,18 +17,19 @@ Via a few additional passive components, the Trigger/TTL output of the Mini SiD 
 
 A passive buzzer connected to a GPIO pin of the ESP8266 outputs a tone signal with a frequency that is proportional to the counts being detected by the SiPM.
 
-![RockFinderInterface](https://github.com/dc1rdb/RockFinder/assets/9314230/71a8b4e7-332c-48c4-94ef-ce229b19496c)
-
+![RockFinderInterface](https://github.com/dc1rdb/RockFinder/blob/main/docs/RockFinderInterface.png)
 
 The ESP8266 is a Lolin D1 Mini Pro with included battery connector and charging circuit. A small LiPo battery sits between the Mini SiD and the veroboard and the Mini SiD is easily being powered via the 3V3 pin of the ESP. The LiPo battery is being charged via the USB interface of the ESP8266. I've added a magnetic USB plug for better handling. If an internal battery is not required, any ESP8266 clone be used.
 
-![IMG_20231112_143026](https://github.com/dc1rdb/RockFinder/assets/9314230/6422b9cf-9892-42e8-9e93-dd494c099827)
+![IMG_20231112_143026](https://github.com/dc1rdb/RockFinder/blob/main/docs/IMG_20231112_143026.jpg)
 
 The enclosure is a standard DN40 (or DN50) tube with end caps, available at home improvement stores. The handle is 3D printed from:
 Ludlum 2401 Handle by S0N1C https://www.thingiverse.com/thing:2561532
 
-![IMG_20231112_142928](https://github.com/dc1rdb/RockFinder/assets/9314230/362bfb38-0d7f-455c-a06b-735b87b1088a)
+![IMG_20231112_142928](https://github.com/dc1rdb/RockFinder/blob/main/docs/IMG_20231112_142928.jpg)
 
 Arduino code in https://github.com/dc1rdb/RockFinder/tree/main/software/RockFinder_analog
+
+Video of the prototype in action: https://github.com/dc1rdb/RockFinder/blob/main/docs/RockfinderDemo.mp4
 
 Note: there is a digital variant in https://github.com/dc1rdb/RockFinder/tree/main/software/Rockfinder_digital which does not require the above mentioned passive components but it is not working well yet. Feel free to improve it but don't complain :)
