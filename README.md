@@ -24,7 +24,7 @@ A passive buzzer connected to a GPIO pin of the ESP8266 outputs a tone signal wi
 
 ![RockFinderInterface](https://github.com/dc1rdb/RockFinder/blob/main/docs/RockFinderInterface.png)
 
-The ESP8266 is a Lolin D1 Mini Pro with included battery connector and charging circuit. A small LiPo battery sits between the Mini SiD and the veroboard and the Mini SiD is easily being powered via the 3V3 pin of the ESP. The LiPo battery is being charged via the USB interface of the ESP8266. I've added a magnetic USB plug for better handling. If an internal battery is not required, any ESP8266 clone be used.
+The ESP8266 is a Lolin D1 Mini Pro with included battery connector and charging circuit. A small LiPo battery sits between the Mini SiD and the veroboard and the Mini SiD is easily being powered via the 3V3 pin of the ESP. The LiPo battery is being charged via the USB interface of the ESP8266. I've added a magnetic USB plug for better handling. If an internal battery is not required, any ESP8266 clone can be used.
 
 ![IMG_20231112_143026](https://github.com/dc1rdb/RockFinder/blob/main/docs/IMG_20231112_143026.jpg)
 
