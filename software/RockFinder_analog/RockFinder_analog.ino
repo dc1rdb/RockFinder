@@ -11,6 +11,10 @@ tone to a passive buzzer
 
 V1.1 - November 12, 2023
 
+Possible future improvements:
+- threshold adjustment via encoder
+- automatic threshold depending on background radiation
+
 */
 
 #include <ESP8266WiFi.h>
