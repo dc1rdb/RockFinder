@@ -33,8 +33,7 @@ The ESP8266 is a Lolin D1 Mini Pro with included battery connector and charging 
 The enclosure is a standard DN40 (or DN50) tube with end caps, available at home improvement stores. The handle is 3D printed from:
 Ludlum 2401 Handle by S0N1C https://www.thingiverse.com/thing:2561532
 
-An endcap to house the SiPM on the window side of the scintillator can be 3D printed with TPU this file: https://github.com/dc1rdb/RockFinder/blob/main/hardware/SiPM_endcap1inch.stl
-
+An endcap to house the SiPM on the window side of the scintillator can be 3D printed with TPU from this file: https://github.com/dc1rdb/RockFinder/blob/main/hardware/SiPM_endcap1inch.stl
 
 
 ![IMG_20231112_142928](https://github.com/dc1rdb/RockFinder/blob/main/docs/IMG_20231112_142928.jpg)
