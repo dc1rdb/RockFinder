@@ -35,7 +35,6 @@ Ludlum 2401 Handle by S0N1C https://www.thingiverse.com/thing:2561532
 
 An endcap to house the SiPM on the window side of the scintillator can be 3D printed with TPU from this file: https://github.com/dc1rdb/RockFinder/blob/main/hardware/SiPM_endcap1inch.stl
 
-
 ![IMG_20231112_142928](https://github.com/dc1rdb/RockFinder/blob/main/docs/IMG_20231112_142928.jpg)
 
 ## Code
@@ -45,8 +44,6 @@ Arduino code in https://github.com/dc1rdb/RockFinder/tree/main/software/RockFind
 Video of the prototype in action: https://github.com/dc1rdb/RockFinder/blob/main/docs/RockfinderDemo.mp4
 
 ## Future Ideas
-Threshold adjustment to optimize performance at different background radiation scenarios.
-
 Note: there is a digital variant in https://github.com/dc1rdb/RockFinder/tree/main/software/Rockfinder_digital which does not require the above mentioned passive components but it is **not** working well yet. Feel free to improve it, but don't complain :)
 
 Thanks for reading!
