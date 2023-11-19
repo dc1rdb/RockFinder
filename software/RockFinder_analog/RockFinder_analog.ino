@@ -23,6 +23,7 @@ RotaryEncoder by Matthias Hertel
 #define MIN 100                 //minimum output tone frequency (Hz)
 #define MAX 5000                //maximum output tone frequency (Hz)
 #define INI 70                  //initial threshold value (or fixed threshold if no encoder is connected)
+
 #define buzzerPin D1            //passive buzzer between this pin and GND
 #define PIN_IN1 D5              //rotary encoder DT
 #define PIN_IN2 D6              //rotary encoder CLK
