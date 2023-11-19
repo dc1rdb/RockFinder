@@ -10,6 +10,7 @@ tone to a passive buzzer.
 
 V2.0 - November 19, 2023
 NEW: adjustable threshold via rotary encoder
+(no code changes required if no encoder is connected)
 
 Dependencies:
 RotaryEncoder by Matthias Hertel
@@ -21,8 +22,7 @@ RotaryEncoder by Matthias Hertel
 
 #define MIN 100                 //minimum output tone frequency (Hz)
 #define MAX 5000                //maximum output tone frequency (Hz)
-#define INI 70                  //initial threshold value
-
+#define INI 70                  //initial threshold value (or fixed threshold if no encoder is connected)
 #define buzzerPin D1            //passive buzzer between this pin and GND
 #define PIN_IN1 D5              //rotary encoder DT
 #define PIN_IN2 D6              //rotary encoder CLK
