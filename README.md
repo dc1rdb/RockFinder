@@ -3,7 +3,7 @@ Scintillator based detector for prospecting radioactive minerals.
 ![IMG_20231112_142928](https://github.com/dc1rdb/RockFinder/blob/main/docs/IMG_20231112_142928.jpg)
 
 ## Background
-When looking for radioactive rocks in the wild, I always found it annoying to keep my eyes on the display of whatever gamma detector I was using. Concentrating on small changes in click rate is also less than ideal.
+When searching for radioactive rocks in the wild, I always found it annoying to keep my eyes on the display of whatever gamma detector I was using. Concentrating on small changes in click rate is also less than ideal.
 On the other hand, the human brain / ear can easily and subconciously detect very small variations in tone pitch. For example, this principle is widely used in satellite dish alignment tools.
 
 ## Project Overview
