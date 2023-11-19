@@ -15,9 +15,9 @@ This add-on converts the TTL output pulses from the Mini SiD to a tone signal wi
 ## Specs
 
 * Compact design: Total size 125 x 100 x 55 mm. Weight 275 g
-* Low-voltage device: No HV needed like with a photomultiplier tube.
-* Low power consumption: <50 mA.
-* Adjustable threshold / sensitivity to cope with different levels of background radiation (optional.
+* Low-voltage device: No HV needed like with a photomultiplier tube
+* Low power consumption: <50 mA
+* Adjustable threshold / sensitivity to cope with different levels of background radiation (optional)
 
 I am currently using a 1" dia x 1" CsI(Tl) encapsulated scintillator from OST Photonics, coupled to a MICROFC-60035-SMT-TR SiPM. The side wall of the scintillator is covered with lead foil to improve directivity.
 
