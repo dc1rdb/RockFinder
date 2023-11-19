@@ -4,7 +4,7 @@ Scintillator based detector for prospecting radioactive minerals.
 ## Background
 This project is an add-on for **Nuclear Phoenix' Mini SiPM Driver (SiD) Board:** https://github.com/OpenGammaProject/Mini-SiD
 
-Please refer to that page for setting up the scintillator and SiPM.
+Please refer to his page for setting up the scintillator and SiPM.
 
 When looking for radioactive rocks in the wild, I always found it annoying to keep my eyes on the display of whatever gamma detector I was using. Concentrating on small changes in click rate is also less than ideal.
 On the other hand, the human brain / ear can easily and subconciously detect very small variations in tone pitch. For example, this principle is widely used in satellite dish alignment tools.
@@ -21,7 +21,7 @@ I am currently using a 1" dia x 1" CsI(Tl) encapsulated scintillator from OST Ph
 
 Via a few additional passive components, the Trigger/TTL output of the Mini SiD is connected to the analog input of a ESP 8266 programmed as a voltage controlled oscillator. 
 
-A passive buzzer connected to a GPIO pin of the ESP8266 outputs a tone signal with a frequency that increases with the counts being detected by the SiPM. As a result, one can quickly pinpoint the radiation source / hotspot.
+A passive buzzer connected to a GPIO pin of the ESP8266 outputs a tone signal with a frequency that increases with the count rate detected by the SiPM. As a result, one can quickly pinpoint the radiation source / hotspot.
 
 ![RockFinderInterface](https://github.com/dc1rdb/RockFinder/blob/main/docs/RockFinderInterface.png)
 
