@@ -1,4 +1,4 @@
-## RockFinder
+# RockFinder
 Scintillator based detector for prospecting radioactive minerals.
 ![IMG_20231112_142928](https://github.com/dc1rdb/RockFinder/blob/main/docs/IMG_20231112_142928.jpg)
 
