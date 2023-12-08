@@ -11,8 +11,9 @@ digital pulses from the (SiD) Board,
 converts them to a proportional audio frequency
 and outputs the tone on a passive buzzer.
 
-N.B. work in progress - does not yet perform well
-(compared to the analog variant).
+IMPORTANT: this variant is on hold, I could not get it to work 
+satisfactorily (compared to the analog variant).
+Feel free to improve it, but don't complain :)
 
 */
 
