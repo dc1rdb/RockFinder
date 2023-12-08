@@ -30,7 +30,7 @@ Via a few additional passive components, the Trigger/TTL output of the Mini SiD 
 
 A passive buzzer connected to a GPIO pin of the ESP8266 outputs a tone signal.
 
-Sensitivity can be adjusted with a rotary encoder.
+Optionally, sensitivity can be adjusted with a rotary encoder.
 
 The ESP8266 is a Lolin D1 Mini Pro with included battery connector and charging circuit. A small single cell 350 mAh LiPo battery sits between the Mini SiD and the veroboard and the Mini SiD is easily being powered via the 3V3 pin of the ESP. This allows for around 6 hours of operation. The LiPo battery is being charged via the USB interface of the ESP8266. A magnetic USB plug is added for better handling. If an internal battery is not required, any ESP8266 clone can be used.
 
@@ -50,7 +50,9 @@ Arduino code in https://github.com/dc1rdb/RockFinder/tree/main/software/RockFind
 ## Demo
 Video of the prototype in action: https://github.com/dc1rdb/RockFinder/blob/main/docs/RockfinderDemo.mp4
 
-## Future Ideas
-Note: there is a digital variant in https://github.com/dc1rdb/RockFinder/tree/main/software/Rockfinder_digital which does not require the above mentioned passive components but it is **not** working well yet. Feel free to improve it, but don't complain :)
+## Updates and Project Log
+Update Dec 8th, 2023
+
+I`ve just finished a unit that incorporates a rotary encoder for threshold adjustment and utilizes a 40 mm dia x 40 mm NaI(Tl) scintillator coupled to a 2x2 SiPM array (MICROFC-60035-SMT-TR). With around four times the scintillator volume compared to my first unit, the sensitivity is significantly improved. A few pics of the new unit can be found in https://github.com/dc1rdb/RockFinder/tree/main/docs
 
 Thanks for reading!
