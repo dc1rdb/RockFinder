@@ -55,4 +55,9 @@ Update Dec 8th, 2023
 
 I`ve just finished a unit that incorporates a rotary encoder for threshold adjustment and utilizes a 40 mm dia x 40 mm NaI(Tl) scintillator coupled to a 2x2 SiPM array (MICROFC-60035-SMT-TR). With around four times the scintillator volume compared to my first unit, the sensitivity is significantly improved. A few pics of the new unit can be found in https://github.com/dc1rdb/RockFinder/tree/main/docs
 
+Code changes V3.0 - July 30, 2024
+
+- Rotary encoder readout now via ISR
+- real variable gain rather than just threshold adjustment
+
 Thanks for reading!
