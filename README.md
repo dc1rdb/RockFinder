@@ -1,3 +1,19 @@
+## Updates and Project Log
+June 26, 2026: Full digital version finally working
+
+The full digital version is finally working satisfactory. The below mentioned analog circuit is no longer required, TTL output of Mini SiD directly connects to GPIO13 (D7 on Wemos D1 mini). Optional sensitivity adjustment via rotary encoder. Arduino sketch located here: https://github.com/dc1rdb/RockFinder/blob/main/software/Rockfinder_digital/Rockfinder_digital.ino
+
+July 30, 2024: Code changes V3.0
+
+- Rotary encoder readout now via ISR
+- Real variable gain rather than just threshold adjustment
+
+Dec 8th, 2023: Update 
+
+I`ve just finished a unit that incorporates a rotary encoder for threshold adjustment and utilizes a 40 mm dia x 40 mm NaI(Tl) scintillator coupled to a 2x2 SiPM array (MICROFC-60035-SMT-TR). With around four times the scintillator volume compared to my first unit, the sensitivity is significantly improved. A few pics of the new unit can be found in https://github.com/dc1rdb/RockFinder/tree/main/docs
+
+
+
 # RockFinder
 Scintillator based detector for prospecting radioactive minerals.
 ![IMG_20231112_142928](https://github.com/dc1rdb/RockFinder/blob/main/docs/IMG_20231112_142928.jpg)
@@ -50,14 +66,6 @@ Arduino code in https://github.com/dc1rdb/RockFinder/tree/main/software/RockFind
 ## Demo
 Video of the prototype in action: https://github.com/dc1rdb/RockFinder/blob/main/docs/RockfinderDemo.mp4
 
-## Updates and Project Log
-Update Dec 8th, 2023
 
-I`ve just finished a unit that incorporates a rotary encoder for threshold adjustment and utilizes a 40 mm dia x 40 mm NaI(Tl) scintillator coupled to a 2x2 SiPM array (MICROFC-60035-SMT-TR). With around four times the scintillator volume compared to my first unit, the sensitivity is significantly improved. A few pics of the new unit can be found in https://github.com/dc1rdb/RockFinder/tree/main/docs
-
-Code changes V3.0 - July 30, 2024
-
-- Rotary encoder readout now via ISR
-- real variable gain rather than just threshold adjustment
 
 Thanks for reading!
