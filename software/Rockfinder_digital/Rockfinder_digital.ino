@@ -4,81 +4,211 @@ Simple detector for gamma radioactive substances,
 utilizing a Mini SiPM Driver (SiD) Board
 https://github.com/OpenGammaProject/Mini-SiD
 and a Wemos D1 Mini ESP8266.
-Digital version, no analog integration circuit reqired
+Digital version, no analog integration circuit required
 Converts Mini-SiD TTL output pulses to continuous moving tone
 
-V0.1 - June 25, 2026
-- initial working version, sensitivity still sucks, parameter tweaking required
+V1.0 - June 26, 2026
+- initial working version, still contains serial output for optimizing.
+  Parameters tailored to a 40mm dia x 40mm NaI scintillator
 
 */
 
 #include <ESP8266WiFi.h>
+#include <Arduino.h>
 
-const int interruptPin = 12;   // Wemos D6 linked to Mini-SiD TTL INT output
-const int buzzerPin = 5;       // Wemos D1 linked to passive buzzer
+// ============================================================================
+// 1. HARDWARE & CONSTANT SETUP
+// ============================================================================
+// Pin Configuration
+const int PULSE_PIN = 13;      // GPIO13 (D7 on Wemos D1 mini)
+const int BUZZER_PIN = 5;       // GPIO5  (D1 on Wemos D1 mini)
 
-// Frequency spectrum configuration for audio gliding
-const float BASE_FREQ = 50.0;   // Low pitch for baseline background counts
-const float MAX_FREQ = 5000.0;   // Piercing pitch for hot uranium spots
+// Rotary Encoder Pins
+const int encoderCLK = 14;     // GPIO14 (D5 on Wemos D1 mini)
+const int encoderDT = 12;      // GPIO12 (D6 on Wemos D1 mini)
 
-// Inertia & responsiveness settings
-const float RAD_SMOOTHING = 0.1; // Filters out single-pulse jitter (0.01 to 0.1)
-const float PITCH_GLIDE = 0.15;   // Controls tone transition speed. Lower = longer slides.
+// Timing Rules
+const unsigned long UPDATE_INTERVAL = 20; // Sample every 100ms
+unsigned long lastUpdateTime = 0;
 
-volatile unsigned long rawPulses = 0;
-float currentRadLevel = 0.0;
-float activePitch = BASE_FREQ;
+// ============================================================================
+// 2. SIGNAL FILTER & CONTROL CONFIGURATION
+// ============================================================================
+// Running Median (Filters statistical scintillation noise)
+const int MEDIAN_WINDOW = 5;       
+float cpsSamples[MEDIAN_WINDOW] = {0.0};
+int sampleIndex = 0;
 
-unsigned long lastFilterTick = 0;
+// Buzzer Frequency Boundaries (Hz)
+const int MIN_FREQ = 30;                 
+const int MAX_FREQ = 5000;
 
-void ICACHE_RAM_ATTR handleInterrupt();
+// Audio Glide Engine
+const float PITCH_GLIDE = 0.005; // Seamless micro-step smoothing factor
+float targetPitch = MIN_FREQ;       
+float activePitch = MIN_FREQ;
 
+// Dynamic Sensitivity Tuning (Adjusts the upper CPS limit for tone mapping)
+const int MIN_CPS = 50;             // Background CPS
+volatile int maxCPSCeiling = 2000;  // Default Sensitivity (Mapping: MIN_CPS to 2000 CPS)
+const int MIN_CEILING = 1000;        // Highly sensitive / narrow range
+const int MAX_CEILING = 15000;      // Less sensitive / wide range
+const int ENCODER_STEP = 1000;       // Adjustment increment step
+
+// Boundary Alert Timing Variables
+volatile unsigned long alertEndTime = 0; // Tracks non-blocking alert duration
+volatile bool isAlertActive = false;     // Audio engine status flag
+
+// Interrupt Storage
+volatile unsigned long pulseCount = 0;
+volatile int lastClkState;
+
+// ============================================================================
+// 3. INTERRUPT SERVICE ROUTINES (ISRs)
+// ============================================================================
+// Pulse counter ISR
+void ICACHE_RAM_ATTR countPulse() {
+  pulseCount++;
+}
+
+
+// Rotary Encoder ISR - Triggered on RISING edge only
+void ICACHE_RAM_ATTR readEncoder() {
+  int originalCeiling = maxCPSCeiling;
+
+  // Determine direction based on DT state
+  if (digitalRead(encoderDT) == LOW) {
+    maxCPSCeiling -= ENCODER_STEP; // Lowering the ceiling INCREASES audible sensitivity
+  } else {
+    maxCPSCeiling += ENCODER_STEP; // Raising the ceiling DECREASES audible sensitivity
+  }
+  
+  // Check bounds and trigger confirmation if user attempts to go past limits
+  if (maxCPSCeiling <= MIN_CEILING) {
+    maxCPSCeiling = MIN_CEILING;
+    if (originalCeiling == MIN_CEILING) { // Trigger only if already at limit
+      isAlertActive = true;
+      alertEndTime = millis() + 40;       // Beep for 40ms
+    }
+  }
+  else if (maxCPSCeiling >= MAX_CEILING) {
+    maxCPSCeiling = MAX_CEILING;
+    if (originalCeiling == MAX_CEILING) { // Trigger only if already at limit
+      isAlertActive = true;
+      alertEndTime = millis() + 40;       // Beep for 40ms
+    }
+  }
+}
+
+// ============================================================================
+// 4. HELPER FUNCTIONS
+// ============================================================================
+float getMedian(float newVal) {
+  cpsSamples[sampleIndex] = newVal;
+  sampleIndex = (sampleIndex + 1) % MEDIAN_WINDOW;
+
+  float sortedSamples[MEDIAN_WINDOW];
+  for (int i = 0; i < MEDIAN_WINDOW; i++) {
+    sortedSamples[i] = cpsSamples[i];
+  }
+
+  // Fast Insertion Sort for small windows (N <= 10)
+  for (int i = 1; i < MEDIAN_WINDOW; i++) {
+    float key = sortedSamples[i];
+    int j = i - 1;
+    while (j >= 0 && sortedSamples[j] > key) {
+      sortedSamples[j + 1] = sortedSamples[j];
+      j--;
+    }
+    sortedSamples[j + 1] = key;
+  }
+  
+  return sortedSamples[MEDIAN_WINDOW / 2];
+}
+
+// ============================================================================
+// 5. SYSTEM INITIALIZATION
+// ============================================================================
 void setup() {
-  //optimize power consumption
+  Serial.begin(115200);
+  
+  // Power reduction configuration
   WiFi.persistent(false);
   WiFi.mode(WIFI_OFF);
   WiFi.forceSleepBegin();   
   
-  pinMode(interruptPin, INPUT);
-  pinMode(buzzerPin, OUTPUT);
+  pinMode(PULSE_PIN, INPUT); 
+  pinMode(BUZZER_PIN, OUTPUT);
   
-  attachInterrupt(digitalPinToInterrupt(interruptPin), handleInterrupt, RISING);
+  // Setup Rotary Encoder pins with internal pullups
+  pinMode(encoderCLK, INPUT_PULLUP);
+  pinMode(encoderDT, INPUT_PULLUP);
   
-  delay(1);
+  // Read initial state of encoder
+  lastClkState = digitalRead(encoderCLK);
   
-  lastFilterTick = millis();
+  // Attach interrupts
+  attachInterrupt(digitalPinToInterrupt(PULSE_PIN), countPulse, RISING);
+  attachInterrupt(digitalPinToInterrupt(encoderCLK), readEncoder, RISING);
 }
 
-void handleInterrupt() {
-  rawPulses++; 
-}
-
+// ============================================================================
+// 6. MAIN EXECUTION LOOP
+// ============================================================================
 void loop() {
-  unsigned long now = millis();
+  unsigned long currentTime = millis();
   
-  // Dynamic processing block executed every 10ms
-  if (now - lastFilterTick >= 10) {
-    lastFilterTick = now;
-
-    // 1. Thread-safe collection of pulse count
+  // --------------------------------------------------------------------------
+  // BLOCK A: DATA SAMPLING (Executes once every update interval)
+  // --------------------------------------------------------------------------
+  if (currentTime - lastUpdateTime >= UPDATE_INTERVAL) {
+    
+    // Atomically snapshot and reset interrupt counter
     noInterrupts();
-    unsigned long intervalPulses = rawPulses;
-    rawPulses = 0;
+    unsigned long pulsesSampled = pulseCount;
+    pulseCount = 0;
+    int localCeiling = maxCPSCeiling; // Safely copy volatile parameter
     interrupts();
+    
+    // Calculate instantaneous CPS
+    float instantCPS = (pulsesSampled * 1000.0) / UPDATE_INTERVAL;
+    
+    // Process signal filtering
+    float filteredCPS = getMedian(instantCPS);
+    
+    // Dynamic frequency mapping using the custom encoder ceiling
+    targetPitch = map(filteredCPS, MIN_CPS, localCeiling, MIN_FREQ, MAX_FREQ);
+    
+    // Hard boundary safety rails
+    if (targetPitch < MIN_FREQ) targetPitch = MIN_FREQ;
+    if (targetPitch > MAX_FREQ) targetPitch = MAX_FREQ;
 
-    // 2. Smooth raw Geiger spikes into a continuous mathematical curve
-    // Converts pulse bursts into a sustained rolling intensity level
-    currentRadLevel = (currentRadLevel * 0.8) + ((float)intervalPulses * RAD_SMOOTHING);
+    // Telemetry output showing the live ceiling adjustments
+    Serial.print("Raw CPS: "); 
+    Serial.print(instantCPS, 1);
+    Serial.print(" | Median CPS: "); 
+    Serial.print(filteredCPS, 1);
+    Serial.print(" | Tone Range Top: ");
+    Serial.print(localCeiling);
+    Serial.println(" CPS");
 
-    // 3. Map intensity to a target pitch logarithmically
-    // Natural ore gives variable spikes; exponential scaling keeps the audio clear
-    float targetPitch = BASE_FREQ + (currentRadLevel * (MAX_FREQ - BASE_FREQ) / 8.0);
-    targetPitch = constrain(targetPitch, BASE_FREQ, MAX_FREQ);
+    lastUpdateTime = currentTime;
+  }
 
-    // 4. Gliding mechanism: Push the active audio pitch smoothly toward target
+  // --------------------------------------------------------------------------
+  // BLOCK B: CONTINUOUS AUDIO ENGINE (Executes every loop cycle)
+  // --------------------------------------------------------------------------
+  if (isAlertActive) {
+    if (currentTime < alertEndTime) {
+      // Force a distinct high-pitch chirp while the alert window is open
+      tone(BUZZER_PIN, 2500); 
+    } else {
+      // Timer expired: Clear the alert flag to resume normal tracking glide
+      isAlertActive = false; 
+    }
+  } else {
+    // Normal Glide Operation
     activePitch = activePitch + ((targetPitch - activePitch) * PITCH_GLIDE);
-
-    // 5. Stream frequency updates continuously to the hardware timer
-    tone(buzzerPin, (int)activePitch);
+    tone(BUZZER_PIN, (int)activePitch);
   }
 }
