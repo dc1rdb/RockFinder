@@ -2,14 +2,14 @@
 
 Simple detector for gamma radioactive substances,
 utilizing a Mini SiPM Driver (SiD) Board
-https://github.com/OpenGammaProject/Mini-SiD
+https://github.com
 and a Wemos D1 Mini ESP8266.
-Digital version, no analog integration circuit required
+Digital version, no analog integration circuit reqired
 Converts Mini-SiD TTL output pulses to continuous moving tone
 
-V1.0 - June 26, 2026
-- initial working version, still contains serial output for optimizing.
-  Parameters tailored to a 40mm dia x 40mm NaI scintillator
+V1.1 - Debounced Encoder Version
+- Tailored to a 40mm dia x 40mm NaI scintillator
+- Fixed encoder jumping via an ISR microsecond time-lock
 
 */
 
@@ -28,7 +28,7 @@ const int encoderCLK = 14;     // GPIO14 (D5 on Wemos D1 mini)
 const int encoderDT = 12;      // GPIO12 (D6 on Wemos D1 mini)
 
 // Timing Rules
-const unsigned long UPDATE_INTERVAL = 20; // Sample every 100ms
+const unsigned long UPDATE_INTERVAL = 20; // Sample every 20ms
 unsigned long lastUpdateTime = 0;
 
 // ============================================================================
@@ -55,13 +55,13 @@ const int MIN_CEILING = 1000;        // Highly sensitive / narrow range
 const int MAX_CEILING = 15000;      // Less sensitive / wide range
 const int ENCODER_STEP = 1000;       // Adjustment increment step
 
-// Boundary Alert Timing Variables
-volatile unsigned long alertEndTime = 0; // Tracks non-blocking alert duration
-volatile bool isAlertActive = false;     // Audio engine status flag
-
 // Interrupt Storage
 volatile unsigned long pulseCount = 0;
 volatile int lastClkState;
+
+// Software Debounce Settings for Encoder
+const unsigned long DEBOUNCE_US = 4000; // 4 milliseconds block window (in microseconds)
+volatile unsigned long lastEncoderTriggerTime = 0;
 
 // ============================================================================
 // 3. INTERRUPT SERVICE ROUTINES (ISRs)
@@ -71,31 +71,40 @@ void ICACHE_RAM_ATTR countPulse() {
   pulseCount++;
 }
 
-
-// Rotary Encoder ISR - Triggered on RISING edge only
+// Rotary Encoder ISR - Triggered on CHANGE edge for absolute state verification
 void ICACHE_RAM_ATTR readEncoder() {
-  int originalCeiling = maxCPSCeiling;
-
-  // Determine direction based on DT state
-  if (digitalRead(encoderDT) == LOW) {
-    maxCPSCeiling -= ENCODER_STEP; // Lowering the ceiling INCREASES audible sensitivity
-  } else {
-    maxCPSCeiling += ENCODER_STEP; // Raising the ceiling DECREASES audible sensitivity
+  unsigned long currentTimeUs = micros();
+  
+  // Software Debounce: If the change occurs within the window, ignore it as noise
+  if (currentTimeUs - lastEncoderTriggerTime < DEBOUNCE_US) {
+    return;
   }
   
-  // Check bounds and trigger confirmation if user attempts to go past limits
-  if (maxCPSCeiling <= MIN_CEILING) {
-    maxCPSCeiling = MIN_CEILING;
-    if (originalCeiling == MIN_CEILING) { // Trigger only if already at limit
-      isAlertActive = true;
-      alertEndTime = millis() + 40;       // Beep for 40ms
-    }
-  }
-  else if (maxCPSCeiling >= MAX_CEILING) {
-    maxCPSCeiling = MAX_CEILING;
-    if (originalCeiling == MAX_CEILING) { // Trigger only if already at limit
-      isAlertActive = true;
-      alertEndTime = millis() + 40;       // Beep for 40ms
+  int currentClkState = digitalRead(encoderCLK);
+  
+  // Only process on a clean transition edge to prevent double execution
+  if (currentClkState != lastClkState) {
+    lastClkState = currentClkState;
+    
+    // We sample when CLK goes HIGH (Rising edge logic)
+    if (currentClkState == HIGH) {
+      // Determine direction based on DT state
+      if (digitalRead(encoderDT) == LOW) {
+        maxCPSCeiling -= ENCODER_STEP; // Lowering the ceiling INCREASES audible sensitivity
+      } else {
+        maxCPSCeiling += ENCODER_STEP; // Raising the ceiling DECREASES audible sensitivity
+      }
+      
+      // Enforce boundary rails
+      if (maxCPSCeiling < MIN_CEILING) {
+        maxCPSCeiling = MIN_CEILING;
+      }
+      else if (maxCPSCeiling > MAX_CEILING) {
+        maxCPSCeiling = MAX_CEILING;
+      }
+      
+      // Update the timestamp only on an accepted change event
+      lastEncoderTriggerTime = currentTimeUs;
     }
   }
 }
@@ -147,9 +156,9 @@ void setup() {
   // Read initial state of encoder
   lastClkState = digitalRead(encoderCLK);
   
-  // Attach interrupts
+  // Attach interrupts (Changed encoder to CHANGE edge for superior tracking)
   attachInterrupt(digitalPinToInterrupt(PULSE_PIN), countPulse, RISING);
-  attachInterrupt(digitalPinToInterrupt(encoderCLK), readEncoder, RISING);
+  attachInterrupt(digitalPinToInterrupt(encoderCLK), readEncoder, CHANGE);
 }
 
 // ============================================================================
@@ -198,17 +207,7 @@ void loop() {
   // --------------------------------------------------------------------------
   // BLOCK B: CONTINUOUS AUDIO ENGINE (Executes every loop cycle)
   // --------------------------------------------------------------------------
-  if (isAlertActive) {
-    if (currentTime < alertEndTime) {
-      // Force a distinct high-pitch chirp while the alert window is open
-      tone(BUZZER_PIN, 2500); 
-    } else {
-      // Timer expired: Clear the alert flag to resume normal tracking glide
-      isAlertActive = false; 
-    }
-  } else {
-    // Normal Glide Operation
-    activePitch = activePitch + ((targetPitch - activePitch) * PITCH_GLIDE);
-    tone(BUZZER_PIN, (int)activePitch);
-  }
+  // Normal Glide Operation
+  activePitch = activePitch + ((targetPitch - activePitch) * PITCH_GLIDE);
+  tone(BUZZER_PIN, (int)activePitch);
 }
