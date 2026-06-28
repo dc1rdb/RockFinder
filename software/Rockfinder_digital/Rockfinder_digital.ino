@@ -7,19 +7,19 @@ and a Wemos D1 Mini ESP8266.
 Digital version, no analog integration circuit reqired
 Converts Mini-SiD TTL output pulses to continuous moving tone
 
-V1.1 - Debounced Encoder Version
-- Tailored to a 40mm dia x 40mm NaI scintillator
-- Fixed encoder jumping via an ISR microsecond time-lock
+V1.2 - Adaptive exponential moving average (EMA) filter
+     - Optional HC-05 BT module to transmit CPS data to CurieFinder
+       (https://github.com/ATonda/CurieFinder_app)
 
 */
 
 #include <ESP8266WiFi.h>
 #include <Arduino.h>
+#include <SoftwareSerial.h>
 
 // ============================================================================
 // 1. HARDWARE & CONSTANT SETUP
 // ============================================================================
-// Pin Configuration
 const int PULSE_PIN = 13;      // GPIO13 (D7 on Wemos D1 mini)
 const int BUZZER_PIN = 5;       // GPIO5  (D1 on Wemos D1 mini)
 
@@ -27,83 +27,78 @@ const int BUZZER_PIN = 5;       // GPIO5  (D1 on Wemos D1 mini)
 const int encoderCLK = 14;     // GPIO14 (D5 on Wemos D1 mini)
 const int encoderDT = 12;      // GPIO12 (D6 on Wemos D1 mini)
 
+// Bluetooth SoftwareSerial Pins
+const int BT_RX_PIN = 4;       // GPIO4  (D2 on Wemos D1 mini) -> Connect to HC-05 TX
+const int BT_TX_PIN = 2;       // GPIO2  (D4 on Wemos D1 mini) -> Connect to HC-05 RX
+
 // Timing Rules
-const unsigned long UPDATE_INTERVAL = 20; // Sample every 20ms
+const unsigned long UPDATE_INTERVAL = 50; // Sample every x ms
 unsigned long lastUpdateTime = 0;
+
+// Bluetooth Timing Configuration
+const unsigned long BT_INTERVAL = 200;    // Send data every 200 ms
+unsigned long lastBTTime = 0;             // Tracks last Bluetooth transmission
+
+// Global storage for the latest averaged value to share across loops
+float globalFilteredCPS = 0.0;
+
+SoftwareSerial BTSerial(BT_RX_PIN, BT_TX_PIN);
 
 // ============================================================================
 // 2. SIGNAL FILTER & CONTROL CONFIGURATION
 // ============================================================================
-// Running Median (Filters statistical scintillation noise)
-const int MEDIAN_WINDOW = 5;       
-float cpsSamples[MEDIAN_WINDOW] = {0.0};
-int sampleIndex = 0;
+// Adaptive EMA Configuration
+float emaFilteredCPS = 0.0;        // Keeps track of the current filter state
+const float ALPHA_MIN = 0.08;      // Heavy smoothing coefficient for stable baselines
+const float ALPHA_MAX = 0.85;      // Ultra-fast response coefficient for rapid spikes
+const float SENSITIVITY_SCALE = 0.02; // Controls how aggressively alpha reacts to deviation
 
 // Buzzer Frequency Boundaries (Hz)
 const int MIN_FREQ = 30;                 
 const int MAX_FREQ = 5000;
 
-// Audio Glide Engine
-const float PITCH_GLIDE = 0.005; // Seamless micro-step smoothing factor
+// Audio Glide Engine Constants
+const float PITCH_GLIDE = 0.005; 
 float targetPitch = MIN_FREQ;       
 float activePitch = MIN_FREQ;
 
-// Dynamic Sensitivity Tuning (Adjusts the upper CPS limit for tone mapping)
-const int MIN_CPS = 50;             // Background CPS
-volatile int maxCPSCeiling = 2000;  // Default Sensitivity (Mapping: MIN_CPS to 2000 CPS)
-const int MIN_CEILING = 1000;        // Highly sensitive / narrow range
-const int MAX_CEILING = 15000;      // Less sensitive / wide range
-const int ENCODER_STEP = 1000;       // Adjustment increment step
+// Dynamic Sensitivity Tuning
+const int MIN_CPS = 50;             //background cps, higher value for larger scintillator
+volatile int maxCPSCeiling = 1000;  //highest sensitivity at power-up
+const int MIN_CEILING = 1000;        
+const int MAX_CEILING = 15000;      
+const int ENCODER_STEP = 1000;       
 
 // Interrupt Storage
 volatile unsigned long pulseCount = 0;
 volatile int lastClkState;
 
 // Software Debounce Settings for Encoder
-const unsigned long DEBOUNCE_US = 4000; // 4 milliseconds block window (in microseconds)
+const unsigned long DEBOUNCE_US = 4000; 
 volatile unsigned long lastEncoderTriggerTime = 0;
 
 // ============================================================================
 // 3. INTERRUPT SERVICE ROUTINES (ISRs)
 // ============================================================================
-// Pulse counter ISR
 void ICACHE_RAM_ATTR countPulse() {
   pulseCount++;
 }
 
-// Rotary Encoder ISR - Triggered on CHANGE edge for absolute state verification
 void ICACHE_RAM_ATTR readEncoder() {
   unsigned long currentTimeUs = micros();
-  
-  // Software Debounce: If the change occurs within the window, ignore it as noise
-  if (currentTimeUs - lastEncoderTriggerTime < DEBOUNCE_US) {
-    return;
-  }
+  if (currentTimeUs - lastEncoderTriggerTime < DEBOUNCE_US) return;
   
   int currentClkState = digitalRead(encoderCLK);
-  
-  // Only process on a clean transition edge to prevent double execution
   if (currentClkState != lastClkState) {
     lastClkState = currentClkState;
-    
-    // We sample when CLK goes HIGH (Rising edge logic)
     if (currentClkState == HIGH) {
-      // Determine direction based on DT state
       if (digitalRead(encoderDT) == LOW) {
-        maxCPSCeiling -= ENCODER_STEP; // Lowering the ceiling INCREASES audible sensitivity
+        maxCPSCeiling -= ENCODER_STEP;
       } else {
-        maxCPSCeiling += ENCODER_STEP; // Raising the ceiling DECREASES audible sensitivity
+        maxCPSCeiling += ENCODER_STEP;
       }
-      
-      // Enforce boundary rails
-      if (maxCPSCeiling < MIN_CEILING) {
-        maxCPSCeiling = MIN_CEILING;
-      }
-      else if (maxCPSCeiling > MAX_CEILING) {
-        maxCPSCeiling = MAX_CEILING;
-      }
-      
-      // Update the timestamp only on an accepted change event
+      if (maxCPSCeiling < MIN_CEILING) maxCPSCeiling = MIN_CEILING;
+      else if (maxCPSCeiling > MAX_CEILING) maxCPSCeiling = MAX_CEILING;
       lastEncoderTriggerTime = currentTimeUs;
     }
   }
@@ -112,27 +107,22 @@ void ICACHE_RAM_ATTR readEncoder() {
 // ============================================================================
 // 4. HELPER FUNCTIONS
 // ============================================================================
-float getMedian(float newVal) {
-  cpsSamples[sampleIndex] = newVal;
-  sampleIndex = (sampleIndex + 1) % MEDIAN_WINDOW;
-
-  float sortedSamples[MEDIAN_WINDOW];
-  for (int i = 0; i < MEDIAN_WINDOW; i++) {
-    sortedSamples[i] = cpsSamples[i];
-  }
-
-  // Fast Insertion Sort for small windows (N <= 10)
-  for (int i = 1; i < MEDIAN_WINDOW; i++) {
-    float key = sortedSamples[i];
-    int j = i - 1;
-    while (j >= 0 && sortedSamples[j] > key) {
-      sortedSamples[j + 1] = sortedSamples[j];
-      j--;
-    }
-    sortedSamples[j + 1] = key;
-  }
+// Adaptive Exponential Moving Average Filter (Reverted)
+float getAdaptiveEMA(float newVal) {
+  // Calculate how far the new reading is from our current filtered average
+  float diff = abs(newVal - emaFilteredCPS);
   
-  return sortedSamples[MEDIAN_WINDOW / 2];
+  // Scale the alpha dynamically based on the difference size
+  float alpha = ALPHA_MIN + (diff * SENSITIVITY_SCALE);
+  
+  // Constrain alpha between defined lower and upper boundary limits
+  if (alpha > ALPHA_MAX) alpha = ALPHA_MAX;
+  if (alpha < ALPHA_MIN) alpha = ALPHA_MIN;
+  
+  // Apply the standard EMA formula: EMA = (New * Alpha) + (Old * (1 - Alpha))
+  emaFilteredCPS = (newVal * alpha) + (emaFilteredCPS * (1.0 - alpha));
+  
+  return emaFilteredCPS;
 }
 
 // ============================================================================
@@ -140,23 +130,19 @@ float getMedian(float newVal) {
 // ============================================================================
 void setup() {
   Serial.begin(115200);
+  BTSerial.begin(9600);
   
-  // Power reduction configuration
   WiFi.persistent(false);
   WiFi.mode(WIFI_OFF);
   WiFi.forceSleepBegin();   
   
   pinMode(PULSE_PIN, INPUT); 
   pinMode(BUZZER_PIN, OUTPUT);
-  
-  // Setup Rotary Encoder pins with internal pullups
   pinMode(encoderCLK, INPUT_PULLUP);
   pinMode(encoderDT, INPUT_PULLUP);
   
-  // Read initial state of encoder
   lastClkState = digitalRead(encoderCLK);
   
-  // Attach interrupts (Changed encoder to CHANGE edge for superior tracking)
   attachInterrupt(digitalPinToInterrupt(PULSE_PIN), countPulse, RISING);
   attachInterrupt(digitalPinToInterrupt(encoderCLK), readEncoder, CHANGE);
 }
@@ -172,31 +158,26 @@ void loop() {
   // --------------------------------------------------------------------------
   if (currentTime - lastUpdateTime >= UPDATE_INTERVAL) {
     
-    // Atomically snapshot and reset interrupt counter
     noInterrupts();
     unsigned long pulsesSampled = pulseCount;
     pulseCount = 0;
-    int localCeiling = maxCPSCeiling; // Safely copy volatile parameter
+    int localCeiling = maxCPSCeiling; 
     interrupts();
     
-    // Calculate instantaneous CPS
     float instantCPS = (pulsesSampled * 1000.0) / UPDATE_INTERVAL;
     
-    // Process signal filtering
-    float filteredCPS = getMedian(instantCPS);
+    // Process signal filtering via Standard Adaptive EMA
+    globalFilteredCPS = getAdaptiveEMA(instantCPS);
     
-    // Dynamic frequency mapping using the custom encoder ceiling
-    targetPitch = map(filteredCPS, MIN_CPS, localCeiling, MIN_FREQ, MAX_FREQ);
+    targetPitch = map(globalFilteredCPS, MIN_CPS, localCeiling, MIN_FREQ, MAX_FREQ);
     
-    // Hard boundary safety rails
     if (targetPitch < MIN_FREQ) targetPitch = MIN_FREQ;
     if (targetPitch > MAX_FREQ) targetPitch = MAX_FREQ;
 
-    // Telemetry output showing the live ceiling adjustments
     Serial.print("Raw CPS: "); 
     Serial.print(instantCPS, 1);
-    Serial.print(" | Median CPS: "); 
-    Serial.print(filteredCPS, 1);
+    Serial.print(" | Adaptive EMA CPS: "); 
+    Serial.print(globalFilteredCPS, 1);
     Serial.print(" | Tone Range Top: ");
     Serial.print(localCeiling);
     Serial.println(" CPS");
@@ -205,9 +186,17 @@ void loop() {
   }
 
   // --------------------------------------------------------------------------
-  // BLOCK B: CONTINUOUS AUDIO ENGINE (Executes every loop cycle)
+  // BLOCK B: BLUETOOTH DATA TRANSMISSION (Executes every 200ms)
   // --------------------------------------------------------------------------
-  // Normal Glide Operation
+  if (currentTime - lastBTTime >= BT_INTERVAL) {
+    BTSerial.print("CPS=");
+    BTSerial.println(globalFilteredCPS, 1); 
+    lastBTTime = currentTime;
+  }
+
+  // --------------------------------------------------------------------------
+  // BLOCK C: CONTINUOUS AUDIO ENGINE
+  // --------------------------------------------------------------------------
   activePitch = activePitch + ((targetPitch - activePitch) * PITCH_GLIDE);
   tone(BUZZER_PIN, (int)activePitch);
 }
