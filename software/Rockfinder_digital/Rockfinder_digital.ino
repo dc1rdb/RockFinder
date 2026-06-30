@@ -6,7 +6,7 @@ https://github.com/OpenGammaProject/Mini-SiD
 and a Wemos D1 Mini ESP8266.
 Converts Mini-SiD TTL output pulses to continuous moving tone
 Optional rotary encoder for sensitivity adjustment
-Optional HC-05 BT module: connect RX to GPIO2  (D4 on Wemos D1 mini)
+Optional HC-05 or JDY-33 BT module: connect RX to GPIO2  (D4 on Wemos D1 mini)
 to transmit CPS data to CurieFinder https://github.com/ATonda/CurieFinder_app
 
 V1.3 - BT module on hardware Serial1 for improved performance
@@ -28,7 +28,7 @@ const int BUZZER_PIN = 5;       // GPIO5  (D1 on Wemos D1 mini)
 const int encoderCLK = 14;     // GPIO14 (D5 on Wemos D1 mini)
 const int encoderDT = 12;      // GPIO12 (D6 on Wemos D1 mini)
 
-// HC-05 BT module RX on GPIO2  (D4 on Wemos D1 mini)
+// HC-05 or JDY-33 BT module RX on GPIO2  (D4 on Wemos D1 mini)
 
 // Timing Rules
 const unsigned long UPDATE_INTERVAL = 50;    //how often cps value is being calculated
