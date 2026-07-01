@@ -8,7 +8,7 @@ Optional rotary encoder for sensitivity adjustment
 Optional HC-05 or JDY-33 BT module: connect RX to GPIO2  (D4 on Wemos D1 mini)
 to transmit CPS data to CurieFinder https://github.com/ATonda/CurieFinder_app
 
-V1.5 - Transmit battery to CurieFinder (solder bridge on Wemos D1 mini required)
+V1.5 - Transmit battery voltage to CurieFinder (solder bridge on Wemos D1 mini required)
      - More filter optimizations
 
 */
