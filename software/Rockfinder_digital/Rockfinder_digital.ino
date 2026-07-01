@@ -1,17 +1,15 @@
 /*
 
 Simple detector for gamma radioactive substances,
-utilizing a Mini SiPM Driver (SiD) Board
-https://github.com/OpenGammaProject/Mini-SiD
+utilizing a Mini SiPM Driver (SiD) Board https://github.com/OpenGammaProject/Mini-SiD
 and a Wemos D1 Mini ESP8266.
 Converts Mini-SiD TTL output pulses to continuous moving tone
 Optional rotary encoder for sensitivity adjustment
 Optional HC-05 or JDY-33 BT module: connect RX to GPIO2  (D4 on Wemos D1 mini)
 to transmit CPS data to CurieFinder https://github.com/ATonda/CurieFinder_app
 
-V1.3 - BT module on hardware Serial1 for improved performance
-     - Fixed rotary encoder bouncing & skipping steps
-     - Filter optimizations
+V1.5 - Transmit battery to CurieFinder (solder bridge on Wemos D1 mini required)
+     - More filter optimizations
 
 */
 
@@ -23,15 +21,16 @@ V1.3 - BT module on hardware Serial1 for improved performance
 // ============================================================================
 const int PULSE_PIN = 13;      // GPIO13 (D7 on Wemos D1 mini)
 const int BUZZER_PIN = 5;       // GPIO5  (D1 on Wemos D1 mini)
+const int BATTERY_PIN = A0;     // Analog pin A0 for voltage sensing
 
 // Rotary Encoder Pins
 const int encoderCLK = 14;     // GPIO14 (D5 on Wemos D1 mini)
 const int encoderDT = 12;      // GPIO12 (D6 on Wemos D1 mini)
 
-// HC-05 or JDY-33 BT module RX on GPIO2  (D4 on Wemos D1 mini)
+// HC-05 BT module RX on GPIO2  (D4 on Wemos D1 mini)
 
 // Timing Rules
-const unsigned long UPDATE_INTERVAL = 50;    //how often cps value is being calculated
+const unsigned long UPDATE_INTERVAL = 100;    //how often cps value is being calculated
 unsigned long lastUpdateTime = 0;
 
 // Bluetooth Timing Configuration
@@ -46,9 +45,9 @@ float globalFilteredCPS = 0.0;
 // ============================================================================
 // Adaptive EMA Configuration
 float emaFilteredCPS = 0.0;        
-const float ALPHA_MIN = 0.08f;          //smoothing coefficient for stable baselines
-const float ALPHA_MAX = 0.90f;          //response coefficient for rapid spikes
-const float SENSITIVITY_SCALE = 0.04f;  //controls how aggressively alpha reacts to deviation
+const float ALPHA_MIN = 0.05f;          //smoothing coefficient for stable baselines
+const float ALPHA_MAX = 0.50f;          //response coefficient for rapid spikes
+const float SENSITIVITY_SCALE = 0.007f;  //controls how aggressively alpha reacts to deviation
 
 // Buzzer Frequency Boundaries (Hz)
 const int MIN_FREQ = 30;                 
@@ -61,7 +60,7 @@ float activePitch = MIN_FREQ;           //max buzzer frequency
 int lastEmittedPitch = 0;            
 
 // Dynamic Sensitivity Tuning
-const int MIN_CPS = 20;              //background cps, adjust for scintillator size/performance
+const int MIN_CPS = 50;              //background cps, higher value for larger scintillator     
 volatile int maxCPSCeiling = 1000;   //adjust this for desired fixed sensitivity if no rotary encoder used
 const int MIN_CEILING = 1000;        
 const int MAX_CEILING = 15000;      
@@ -87,32 +86,26 @@ void ICACHE_RAM_ATTR countPulse() {
 
 // State Machine Decoder running on CHANGE for BOTH pins
 void ICACHE_RAM_ATTR readEncoder() {
-  // Shift old pins left, read new pins into lowest 2 bits
   encoderHistory = (encoderHistory << 2) & 0x0F;
   encoderHistory |= (digitalRead(encoderCLK) << 1) | digitalRead(encoderDT);
   
-  // Lookup movement based on historical sequence
   int8_t movement = KNOB_STATES[encoderHistory];
-  
-  // Static sub-step tracker to filter out 4 states per physical click
   static int8_t subStepCounter = 0;
   
   if (movement != 0) {
-    // REVERSED CORRECTION: Flipped the '+' and '-' signs here to fix direction polarity
     if (movement > 0) {
       subStepCounter--;
     } else {
       subStepCounter++;
     }
     
-    // 4-STEP FILTER: Only apply change when 4 quadrature sub-steps have completed
     if (subStepCounter >= 4) {
-      subStepCounter = 0; // Reset sub-steps
+      subStepCounter = 0; 
       maxCPSCeiling += ENCODER_STEP;
       if (maxCPSCeiling > MAX_CEILING) maxCPSCeiling = MAX_CEILING;
     } 
     else if (subStepCounter <= -4) {
-      subStepCounter = 0; // Reset sub-steps
+      subStepCounter = 0; 
       maxCPSCeiling -= ENCODER_STEP;
       if (maxCPSCeiling < MIN_CEILING) maxCPSCeiling = MIN_CEILING;
     }
@@ -128,6 +121,20 @@ float getAdaptiveEMA(float newVal) {
   alpha = constrain(alpha, ALPHA_MIN, ALPHA_MAX);
   emaFilteredCPS = (newVal * alpha) + (emaFilteredCPS * (1.0f - alpha));
   return emaFilteredCPS;
+}
+
+// Reads analog pin with 8x oversampling to stabilize jitter
+int getBatteryVoltage() {
+  long adcSum = 0;
+  for(int i = 0; i < 8; i++) {
+    adcSum += analogRead(BATTERY_PIN);
+    delayMicroseconds(50); 
+  }
+  float avgADC = (float)adcSum / 8.0f;
+  
+  // Max range is 4500mV (at 1023 raw). 4500 / 1023 = 4.39882
+  int millivolts = (int)(avgADC * 4.39882f);
+  return millivolts;
 }
 
 // ============================================================================
@@ -146,12 +153,9 @@ void setup() {
   pinMode(encoderCLK, INPUT_PULLUP);
   pinMode(encoderDT, INPUT_PULLUP);
   
-  // Seed initial encoder state array index
-  encoderHistory = (digitalRead(encoderCLK) << 1) | digitalRead(encoderDT);
+  encoderHistory = (digitalRead(encoderCLK) << 1) | digitalRead(digitalRead(encoderDT));
   
   attachInterrupt(digitalPinToInterrupt(PULSE_PIN), countPulse, RISING);
-  
-  // Both pins MUST trigger the ISR on CHANGE for full quadrature decoding
   attachInterrupt(digitalPinToInterrupt(encoderCLK), readEncoder, CHANGE);
   attachInterrupt(digitalPinToInterrupt(encoderDT), readEncoder, CHANGE);
 }
@@ -194,8 +198,15 @@ void loop() {
   // --------------------------------------------------------------------------
   if (currentTime - lastBTTime >= BT_INTERVAL) {
     lastBTTime = currentTime;
+    
+    int currentVbat = getBatteryVoltage();
+    
+    // Prints requested format: CPS=x.xx VBAT=xxxxmV
     Serial1.print("CPS=");
-    Serial1.println(globalFilteredCPS, 1); 
+    Serial1.print(globalFilteredCPS, 2);
+    Serial1.print(" VBAT=");
+    Serial1.print(currentVbat);
+    Serial1.println("mV"); 
   }
 
   // --------------------------------------------------------------------------
