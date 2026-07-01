@@ -3,11 +3,12 @@ June 30, 2026: Support for Optional Bluetooth module
 
 An optional HC-05 or JDY-33 BT module will allow to transmit CPS data to CurieFinder https://github.com/ATonda/CurieFinder_app
 CurieFinder is a field tool designed for localization of radiation sources, mapping areas with elevated activity, prospecting and tracing ore veins.
+Latest Arduino sketch located here: https://github.com/dc1rdb/RockFinder/blob/main/software/Rockfinder_digital/Rockfinder_digital.ino
 
 
 June 26, 2026: Full digital version finally working
 
-The full digital version is finally working satisfactory. The below mentioned analog circuit is no longer required, TTL output of Mini SiD directly connects to GPIO13 (D7 on Wemos D1 mini). Optional sensitivity adjustment via rotary encoder. Arduino sketch located here: https://github.com/dc1rdb/RockFinder/blob/main/software/Rockfinder_digital/Rockfinder_digital.ino
+The full digital version is finally working satisfactory. The below mentioned analog circuit is no longer required, TTL output of Mini SiD directly connects to GPIO13 (D7 on Wemos D1 mini). Optional sensitivity adjustment via rotary encoder. 
 
 July 30, 2024: Code changes V3.0
 
