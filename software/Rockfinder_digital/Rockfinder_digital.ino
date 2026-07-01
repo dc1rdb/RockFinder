@@ -50,13 +50,13 @@ const float ALPHA_MAX = 0.50f;          //response coefficient for rapid spikes
 const float SENSITIVITY_SCALE = 0.007f;  //controls how aggressively alpha reacts to deviation
 
 // Buzzer Frequency Boundaries (Hz)
-const int MIN_FREQ = 30;                 
-const int MAX_FREQ = 5000;
+const int MIN_FREQ = 30;                 //buzzer frequency at background radiation
+const int MAX_FREQ = 5000;               //max buzzer frequency 
 
 // Audio Glide Engine Constants
 const float PITCH_GLIDE = 0.01f;        //"flywheel" for tone pitch changes
-float targetPitch = MIN_FREQ;           //buzzer frequency at background radiation
-float activePitch = MIN_FREQ;           //max buzzer frequency 
+float targetPitch = MIN_FREQ;           
+float activePitch = MIN_FREQ;           
 int lastEmittedPitch = 0;            
 
 // Dynamic Sensitivity Tuning
